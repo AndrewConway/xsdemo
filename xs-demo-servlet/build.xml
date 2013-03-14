@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<!-- Configuration of the Ant build system to generate a Jar file --> 
+<project name="XS demo build scripts" default="CopyResources">
+	
+  <target name="CopyResources" description="Copy third party and xs Javascript/CSS/image resources to the /WebContent directory. Shame this is manual. TODO - fix">
+  	<copy toDir="WebContent/">
+  		<fileset dir="../xs-ThirdPartyWebContent/WebContent/"/>
+  		<fileset dir="../../xs/xs/WebContent/"/>
+    </copy>
+        <!-- <jar jarfile="xs.jar" basedir="../../git/xs/xs/bin/" /> -->
+  </target>
+	
+</project>

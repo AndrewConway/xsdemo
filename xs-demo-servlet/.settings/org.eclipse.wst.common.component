@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?><project-modules id="moduleCoreId" project-version="1.5.0">
+    <wb-module deploy-name="xs-demo-servlet">
+        <wb-resource deploy-path="/" source-path="/WebContent" tag="defaultRootSource"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/src"/>
+        <dependent-module archiveName="xs-test.jar" deploy-path="/WEB-INF/lib" handle="module:/resource/xs-test/xs-test">
+            <dependency-type>uses</dependency-type>
+        </dependent-module>
+        <dependent-module archiveName="jackson-core-2.1.1.jar" deploy-path="/WEB-INF/lib" handle="module:/classpath/lib/xs/lib/jackson-core-2.1.1.jar">
+            <dependency-type>uses</dependency-type>
+        </dependent-module>
+        <dependent-module archiveName="xs.jar" deploy-path="/WEB-INF/lib" handle="module:/resource/xs/xs">
+            <dependency-type>uses</dependency-type>
+        </dependent-module>
+        <property name="context-root" value="xs-demo-servlet"/>
+        <property name="java-output-path" value="/xs-demo-servlet/build/classes"/>
+    </wb-module>
+</project-modules>
