@@ -25,6 +25,7 @@ import java.net.URLEncoder
 import org.greatcactus.xs.test.History
 import org.greatcactus.xs.test.SpaceExternalDependencyResolver
 import scala.concurrent.Await
+import org.greatcactus.xs.frontend.XSToolBar
 
 /**
  * @author Andrew
@@ -89,24 +90,30 @@ class TestXSServlet extends HttpServlet {
   }
   
   override def destroy() {
-    if (loadedProperly || !file.exists())
-      XMLSerialize.serialize(xsEditor.currentObject,new FileOutputStream(file))
+    if (loadedProperly || !file.exists()) save()
   }
 
+  def save() {XMLSerialize.serialize(xsEditor.currentObject,new FileOutputStream(file)) }
   val file = new File("""C:\tmp\Space.xml""")
   var loadedProperly = true;
   val xsEditor = new XSEdit(
       try {
-        XMLDeserialize.deserialize[Space](new FileInputStream(file))
-    } catch { case t:Throwable => t.printStackTrace(); loadedProperly=false; new Space(new History(""),Nil) },Some(SpaceExternalDependencyResolver)
+        loadFile
+      } catch { case t:Throwable => t.printStackTrace(); loadedProperly=false; new Space(new History(""),Nil) },Some(SpaceExternalDependencyResolver)
   );
   
+  def loadFile : Space = XMLDeserialize.deserialize[Space](new FileInputStream(file))
+  object Toolbar extends XSToolBar {
+    override def onSave() {save()}
+    override def onRevert() { xsEditor.replaceRoot(loadFile)}
+    override def useRevert = true
+  }
   def mainPage(response:HttpServletResponse) {
     response.setContentType("text/html");
     response.setCharacterEncoding("UTF-8")
     val out = response.getWriter();
     out.println("""<!DOCTYPE html>""")
-    val client = new HTML5Client(xsEditor,Locale.FRENCH)
+    val client = new HTML5Client(xsEditor,Some(Toolbar),Locale.FRENCH)
     val page =  
       <html>
         <head>

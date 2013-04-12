@@ -28,6 +28,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import play.api.templates.Html
 import views.html.defaultpages.badRequest
+import org.greatcactus.xs.frontend.XSToolBar
 
 
 /**
@@ -100,7 +101,7 @@ object XSController extends Controller {
   );
 
   def demo = Action {
-    val client = new HTML5Client(xsEditor,Locale.FRENCH)
+    val client = new HTML5Client(xsEditor,Some(new XSToolBar),Locale.FRENCH)
     Ok(views.html.demo(client.baseHTML))
   }
   
