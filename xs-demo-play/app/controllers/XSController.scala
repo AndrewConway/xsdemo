@@ -29,13 +29,15 @@ import java.io.ByteArrayOutputStream
 import play.api.templates.Html
 import views.html.defaultpages.badRequest
 import org.greatcactus.xs.frontend.XSToolBar
+import org.greatcactus.xs.test.DemoPopup
 
 
 /**
  * @author Andrew
  */
 object XSController extends Controller {
-
+  HTML5DetailsPane.addCustom(DemoPopup)
+  
   def icon(name:String) = Action { implicit request =>
 //    val lastMod = request.headers.get(IF_MODIFIED_SINCE).flatMap(ResAssets.parseDate)
     if (name==null || name.isEmpty) BadRequest("Query string doesn't make sense")

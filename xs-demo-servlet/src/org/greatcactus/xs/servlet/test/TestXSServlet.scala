@@ -26,12 +26,15 @@ import org.greatcactus.xs.test.History
 import org.greatcactus.xs.test.SpaceExternalDependencyResolver
 import scala.concurrent.Await
 import org.greatcactus.xs.frontend.XSToolBar
+import org.greatcactus.xs.test.DemoPopup
 
 /**
  * @author Andrew
  *
  */
 class TestXSServlet extends HttpServlet {  
+  
+  HTML5DetailsPane.addCustom(DemoPopup)
   
   override def doGet(request:HttpServletRequest,response:HttpServletResponse) {
     request.getParameter("sub") match {

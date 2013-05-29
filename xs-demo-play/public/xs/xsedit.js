@@ -37,6 +37,10 @@ function xsProcessClientMessageFromServer(json,session) {
 			$(json.args[0]).removeClass(json.args[1]);
 		} else if (json.cmd=="GotoURL") {
 			window.location.href=json.args[0];
+		} else if (json.cmd=="GotoURLNewTab") {
+			window.open(json.args[0],'_blank');
+		} else if (json.cmd=="message") {
+			alert(json.args[0]);
 		} else if (json.cmd=="ToolbarStatus") {
 			var elem = document.getElementById(json.args[0]);
 			elem.disabled = json.args[1]=='false';
@@ -67,14 +71,11 @@ function xsProcessClientMessageFromServer(json,session) {
 		} else if (json.cmd=="SetRows") {
 			var elem = document.getElementById(json.id+"_ui");
 			elem.dataxs_rows = json.rows;
-			var slickgrid = elem.dataxs_sg;
-			if (slickgrid) {
-				var saved = xs.saveSlickGridEditor(slickgrid);
-				slickgrid.setData(elem.dataxs_rows); 
-				slickgrid.updateRowCount();
-				slickgrid.render();
-				xs.restoreSlickGridEditor(slickgrid, saved,false);
-			};
+			xs.grid.majorDataChange(elem,false);
+		} else if (json.cmd=="SetGridRowMetadata") {
+			var elem = document.getElementById(json.id+"_ui");
+			elem.dataxs_rowmetadata = json.rows;
+			xs.grid.majorDataChange(elem,true);
 		} else if (json.cmd=="SetRow") {
 			var elem = document.getElementById(json.id+"_ui");
 			elem.dataxs_rows[json.num] = json.row;
@@ -102,10 +103,12 @@ function xsProcessClientMessageFromServer(json,session) {
 		} else if (json.cmd=="StartGrid") {
 			var id = json.args[0]+"_ui";
 			var elem = document.getElementById(id);
+			var dialogid = id+"_export";
+			$(elem).append("<div id='"+dialogid+"' title='Copy to other application (like Excel)'><p>Select and copy the table below, being the currently selected rows. To paste data from a spreadsheet, close this, click to edit the start cell, then paste.</p> <table class='xsPasteTable' id='"+dialogid+"_table'></table></div>");
+			$("#"+dialogid).dialog({modal:true, autoOpen:false,width:$(window).width()*3/4});
 			var cols = eval(json.args[1]);
-			var rows = elem.dataxs_rows;
-			var options = {autoHeight:true,editable:true,enableAddRow:true,enableCellNavigation:true,fullWidthRows:true,forceFitColumns:true};
-			var slickgrid = new Slick.Grid("#"+json.args[0]+"_grid",rows,cols,options);
+			var options = eval(json.args[3]); 
+			var slickgrid = new Slick.Grid("#"+json.args[0]+"_grid",xs.grid.getDataModel(elem),cols,options);
 			slickgrid.xsPTFonInputObj = json.args[2];
 			slickgrid.xsPTFid = json.args[0];
 			elem.dataxs_sg=slickgrid;
@@ -150,7 +153,7 @@ function xsProcessClientMessageFromServer(json,session) {
               e.stopImmediatePropagation();
             });
 
-            
+            xs.resizeSlickGrid(elem);
             slickgrid.render();
             /* Set up grid context menu */
 
@@ -160,14 +163,115 @@ function xsProcessClientMessageFromServer(json,session) {
 			if (slickgrid) {
 				slickgrid.destroy();
 			}
+		} else if (json.cmd=="ProgressBar") {
+			var id = json.args[0]+"_ui";
+			var progid = id+"_progressLine";
+			var statusid = id+"_status";
+			var statusBar = id+"_progress";
+			var statusPercent = id+"_progressPercent";
+			if (!document.getElementById(progid)) {
+				$(document.getElementById(id).parentNode).append("<div class='xsProgressStatus' id='"+progid+"'>Status : <span id='"+statusid+"'></span></div>");
+			}
+			var statusel = document.getElementById(statusid);
+			var cmd = json.args[1];
+			if (cmd=="Start") {
+				statusel.className="xsStatusWorking";
+ 			    statusel.innerHTML = "<progress value='0' max='100' id='"+statusBar+"'></progress> <span id='"+statusPercent+"'>0%</span> <button onclick='xs.S"+session.id+".cancelJob(\""+json.args[0]+"\");'>Cancel</button>";
+			} else if (cmd=="Progress") {
+				var percent = Math.round(parseFloat(json.args[2])*100.0);
+				var p1 = document.getElementById(statusBar);
+				if (p1) p1.value=percent;
+				var p2 = document.getElementById(statusPercent);
+				if (p2) p2.textContent=""+percent+"%";
+			} else if (cmd=="FinishedOK") {
+				statusel.innerHTML="Finished : "+json.args[2]; 
+				statusel.className="xsStatusGood";
+			} else if (cmd=="FinishedError") {
+				statusel.innerHTML="Failed : "+json.args[2]; 
+				statusel.className="xsStatusError";
+			}
+		} else if (json.cmd=="ShowCustomPopup") {
+			var id = json.args[0];
+			var okfunction = eval("["+json.args[1]+"][0]"); // needs [...][0] otherwise treats function() {...} as error
+			var goodfunction = eval("["+json.args[2]+"][0]");
+			$("#"+id+"_popup").dialog({
+				autoOpen : true,
+			    modal : true,
+			    buttons : {
+			    	"OK" : function() {
+			    		try {
+				    		var message = okfunction();
+				    		if (message) alert(message);
+				    		else {
+				    			var result = goodfunction();
+				    			session.popupSetField(id,result);
+					        	$(this).dialog("close");			    			
+				    		};			    			
+			    		} catch(err) {
+			    			console.log("There was an error trying to execute popup functions "+err.message);
+			    			console.log(err);
+			    		}
+			    	},
+			        Cancel: function() {
+			        	$(this).dialog("close");
+			        }
+			    },
+			    close : function() {
+			    	session.closedPopup(id);
+			    }
+			});
+			// $("#"+id+"_popup").dialog("open"); 
+		} else if (json.cmd=="DisposeCustomPopup") {
+			var id = json.args[0];
+			var okfunction = eval(json.args[1]);
+			var goodfunction = eval(json.args[2]);
+			$("#"+id+"_popup").dialog("close");
 		} else alert("Unknown client message "+json.cmd);
 	};
   };
 }
 
 
+
 var xs = {
 	
+  resizeAllSlickGrids : function () {
+	$(".xsTableHolder").each(function () { xs.resizeSlickGrid(this);});  
+  },
+  
+  /** 
+   * Resizing the grid is more complex than one might think. The width has to be specified explitly (slick grid requirement). 
+   * Making it bigger is not too bad - if the area is expanded, the table is made wider, and extra slop goes into the wide cell because of the CSS width=99%. You get the width of the div it is in, and resize to that size (although it creates a scrollbar if there is not a 1-2 pixel slop - see to do below)
+   *
+   * Making it smaller is harder - the td it is in will not shrink as it contains a wide grid. We can't make the table layout algorithm ignore its with
+   * without also ignoring its height... So look at parents and adjust.
+   */
+  resizeSlickGrid : function(tableHolderElem) {
+	//console.log("width = "+tableHolderElem.clientWidth);  
+	//console.log("width = "+tableHolderElem.offsetWidth);  
+	var td = xs.getParentTD(tableHolderElem);
+//	console.log(td);
+	if (!td) return;
+	var tr = td.parentNode;
+//	console.log(tr);
+	if (!tr) return;
+	//console.log("tr.width = "+tr.clientWidth);  
+	//console.log("tr.width = "+tr.offsetWidth);  
+	var pdiv = xs.getParentDiv(tr);
+	if (!pdiv) return;
+	//console.log("pdiv.width = "+pdiv.clientWidth);  
+	//console.log("pdiv.width = "+pdiv.offsetWidth);  
+	var toowide = tr.offsetWidth-pdiv.clientWidth+4;  // TODO get this pixel perfect. The +4 works on most size clients, with a little slop
+	var w=tableHolderElem.clientWidth-2; // TODO get this pixel perfect. Again there is a little slop here
+	if (toowide>0) w=w-toowide;
+	if (w<100) w=100;
+	if (tableHolderElem.dataCurrentWidth == w) return;
+	tableHolderElem.dataCurrentWidth = w;
+	var slickgrid = tableHolderElem.dataxs_sg;
+    $(tableHolderElem).children('.xsTableGrid').css({'width':""+w+'px'});
+    slickgrid.resizeCanvas();
+  },
+  
   saveSlickGridEditor : function(grid) {
 	var target = (grid.getCellEditor()&&grid.getCellEditor().getTarget)?grid.getCellEditor().getTarget():null;
 	return {
@@ -183,13 +287,14 @@ var xs = {
 		  //console.log(saved.active);
 		  grid.setActiveCell(saved.active.row,saved.active.cell);
 		  if (saved.editor) {
-			  console.log("Reenabling editor");
-			  console.log(saved);
+			  //console.log("Reenabling editor");
+			  //console.log(saved);
 			  grid.editActiveCell();
 			  if (saved.contents) {
+				  //console.log("saved.contents = "+saved.contents);
 	 		      var target = grid.getCellEditor()?grid.getCellEditor().getTarget():null;
                   if (target) {
-                	  console.log("restoreText : "+restoreText);
+                	  //console.log("restoreText : "+restoreText);
         			  if (restoreText) grid.getCellEditor().setValue(saved.contents.text);
                       xsPTF.setPTFSelection(target,saved.contents.startSelection,saved.contents.endSelection);                	  
                   }				  
@@ -205,6 +310,15 @@ var xs = {
 	  if (elem.parentNode) return xs.getParentDiv(elem.parentNode);
 	  return null;
   },
+
+  // get the first ancestor of DOM element elem that is a TD (or null if none).		
+  getParentTD : function(elem) {
+	  if (elem==null) return null;
+	  if (elem.nodeType==1 && elem.nodeName=="TD") return elem;
+	  if (elem.parentNode) return xs.getParentTD(elem.parentNode);
+	  return null;
+  },
+  
   
   Session : function(sessionid) {
 	  this.id = sessionid;
@@ -262,7 +376,11 @@ var xs = {
 		  considerResending(10000,cmd.index);
 	  };
 	  /** Called by a client action - eg clicking on a "new X" action */
-	  this.action = function(id) { this.sendToServer({cmd:"Action",args:[id,this.currentlyEditing]});};
+	  this.action = function(id) {
+		  var elem = document.getElementById(id+"_ui");
+		  if (elem.getAttribute("disabled")=="disabled") return;
+		  this.sendToServer({cmd:"Action",args:[id,this.currentlyEditing]});
+	  };
 	  /** Called by a client clicking on the opener for a tree */
 	  this.treeOpen = function(id) {
 		  var elem = document.getElementById(id+"_opener");
@@ -278,11 +396,17 @@ var xs = {
 		  // end unnecessary code
 		  this.sendToServer({cmd:"TreeOpen",args:[id,""+isNowOpen]});		  
       }; 
+      /** Get the id of a tree given the id of an element inside it. Removes xsTreeNode from start and _xxxx from end */
+      this.treeID = function(id) {
+    	  return id.slice(10,id.indexOf("_"));
+      };
 	  /** Called by a client clicking on the main part of a tree node */
-	  this.treeSelect = function(id) {
-		  $("div#xsTree"+this.id+" .xsSelected").removeClass("xsSelected"); // redundant, but anticipate server command for faster response.
+	  this.treeSelect = function(event,id) {
+		  var treeID = "xsTree"+this.treeID(id);
+		  var added = document.getElementById(treeID).getAttribute("data-multiselect")=="true" && (event.shiftKey||event.ctrlKey);
+		  if (!added) $("div#"+this.treeID(id)+" .xsSelected").removeClass("xsSelected"); // redundant, but anticipate server command for faster response.
 		  $("#"+id+"_all > span:nth-child(2)").addClass("xsSelected"); // redundant, but anticipate server command for faster response.
-		  this.sendToServer({cmd:"TreeSelect",args:[id]});
+		  this.sendToServer({cmd:"TreeSelect",args:[id,""+added]});
 	  }; 
 	  /** Called when a text field changes */
 	  this.change = function(id) { 
@@ -294,6 +418,16 @@ var xs = {
 	  this.ptfInput = function(target,newtext) {
 		  var id = target.id.slice(0,-3); // remove _ui
 		  this.sendToServer({cmd:"Change",args:[id,newtext,this.currentlyEditing,target.getAttribute("xs-data-gridRow")||"",target.getAttribute("xs-data-gridCol")||""]});
+	  };
+	  /** Called when a pseudo text field changes by a pasted table */
+	  this.ptfGridPaste = function(target,table) {
+		  var tosend = [target.id,this.currentlyEditing,target.getAttribute("xs-data-gridRow")||"",target.getAttribute("xs-data-gridCol")||""];
+		  for (var i=0;i<table.length;i++) {
+			  var row = table[i];
+			  tosend.push(""+row.length);
+			  for (var j=0;j<row.length;j++) tosend.push(row[j]);
+		  }
+		  this.sendToServer({cmd:"PasteTable",args:tosend});		  
 	  };
 	  /** Called when a check box field changes */
 	  this.changeCB = function(id) { 
@@ -319,6 +453,19 @@ var xs = {
 		  this.sendToServer({cmd:"Toolbar",args:[id]});
 	  };
 	  
+	  this.cancelJob = function(id) {
+		  this.sendToServer({cmd:"CancelJob",args:[id,this.currentlyEditing]});
+	  };
+	  
+	  this.initiatePopup = function(id) {
+		  this.sendToServer({cmd:"InitiatePopup",args:[id,this.currentlyEditing]});
+	  };
+	  this.closedPopup = function(id) {
+		  this.sendToServer({cmd:"ClosedPopup",args:[id,this.currentlyEditing]});
+	  };
+	  this.popupSetField = function(id,value) {
+		  this.sendToServer({cmd:"PopupSetField",args:[id,this.currentlyEditing,value]});
+	  };
 	  //
 	  // stuff for the tree - should be documented better.
 	  //
@@ -393,7 +540,7 @@ var xs = {
 		  ev.preventDefault();
 		  ev.stopPropagation();
 		  if (this.current_dragging_div!=null) {
-		    this.sendToServer({cmd:"DragLocal",args:[this.current_dragging_div.id.slice(0,-4),div.id.slice(0,-4),this.dragOverAtTop]});			    	
+		    this.sendToServer({cmd:"TreeDragLocal",args:[this.current_dragging_div.id.slice(0,-4),div.id.slice(0,-4),this.dragOverAtTop]});			    	
 		  } else {
 			  // TODO non local drag
 		  }
@@ -402,17 +549,18 @@ var xs = {
 	  };
 
 	  /** Get the currently selected nodes as an array of ids. Note that multiple selection is not currently implemented so this will perforce be a single element array */
-	  this.getSelectedTreeNodes = function() {
+	  this.getSelectedTreeNodes = function(baseID) {
 		  var res = [];
-		  $("div#xsTree"+xsthis.id+" .xsSelected").each(function() {
+		  $("div#"+baseID+" .xsSelected").each(function() {
 			  var idfull = this.id; // need to remove _selectable from the end (11 chars)
 			  res.push(idfull.substring(0,idfull.length-11)); 
 		  });
 		  return res;
 	  };
 	  
-	  this.treeContextMenu = function(subtype) {
-		  xsthis.sendToServer({cmd:"TreeContextMenu",args:[subtype,xsthis.getSelectedTreeNodes().toString()]});
+	  this.treeContextMenu = function(subtype,treeID) {
+		  console.log(treeID);
+		  xsthis.sendToServer({cmd:"TreeContextMenu",args:[treeID,subtype,xsthis.getSelectedTreeNodes(treeID).toString()]});
 	  };
 	  
 	  this.gridContextMenu = function(subtype,tableid,selectedrows) {
@@ -517,7 +665,7 @@ $(function() {
 		callback: function(key,options) {
 			var objdesc = this[0].getAttribute("data-oninputobj");
 			var obj = eval(objdesc);
-			obj.treeContextMenu(key);
+			obj.treeContextMenu(key,this[0].id);
 		},
 		items: {
 			cut : { name:"Cut", icon:"cut" },
@@ -532,19 +680,56 @@ $(function() {
 	$.contextMenu({
 		selector: '.xsTableHolder',
 		callback: function(key,options) {
-			console.log(this);
+			//console.log(this);
 			var tableid = this[0].getAttribute("id");
+			var dialogid = tableid+"_export";
 			tableid=tableid.substring(0,tableid.length-3); // remove _ui
 			var slickgrid = this[0].dataxs_sg;
 			var obj = eval(slickgrid.xsPTFonInputObj);
 			var selected = slickgrid.getSelectedRows();
-			obj.gridContextMenu(key,tableid,selected);
+			if ((!selected) || selected.length==0) {
+				alert("Select a row or rows first.");
+			} else if (key=="copyExport") {
+				var cols = slickgrid.getColumns();
+				console.log(cols);
+				var data = slickgrid.getData();
+				console.log(data);
+				var table = document.getElementById(dialogid+"_table");
+				var contents = "";
+				selected=selected.sort();
+				console.log(selected);
+				console.log(selected.sort());
+				for (var i=0;i<selected.length;i++) {
+					var row = data.getItem(selected[i]);
+					contents+="<tr>";
+					for (var j=0;j<cols.length;j++) {
+						contents+="<td>"+xsPTF.escapeText(row[cols[j].id]||"").replace(/\n/g,"<br/>")+"</td>";
+					}
+					contents+="</tr>";
+				}
+				table.innerHTML = contents;
+				$("#"+dialogid).dialog("open");
+				if (document.body.createTextRange) { //ms
+				  var range = document.body.createTextRange();
+				  range.moveToElementText(table);
+				  range.select();
+				} else if (window.getSelection) { //all others
+				  var selection = window.getSelection();        
+				  var range = document.createRange();
+				  range.selectNodeContents(table);
+				  selection.removeAllRanges();
+				  selection.addRange(range);
+				}
+			} else obj.gridContextMenu(key,tableid,selected);
 		},
 		items: {
 			cut : { name:"Cut", icon:"cut" },
 			copy : { name:"Copy", icon:"copy" },
+			copyExport : { name:"Copy to other application", icon:"copy" },
 		    paste : { name:"Paste", icon:"paste" },
 		    erase : { name:"Delete", icon:"delete" }
 		}
 	});
 });
+
+setInterval(xs.resizeAllSlickGrids,200); // onresize doesn't work for divs.

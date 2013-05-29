@@ -1,6 +1,32 @@
 
+table.xsPasteTable  {
+	border: 1px solid black;
+    border-collapse:collapse;
+}
+
+table.xsPasteTable td {
+	border: 1px solid black;
+    vertical-align:top;
+}
+table.xsPasteTable tr:nth-child(odd) {
+	background : #eee;
+} 
+
+.xsForm .xsColMainWidth1 {
+	width: 99%;
+}
+.xsForm .xsColMainWidth2 {
+	width: 100%;
+}
+.xsForm .xsColLabel {
+	white-space: nowrap;
+}
+
+
+
 .xsTableHolder {
-	width: 500px;
+	width: 100%;
+	overflow-x:hidden;
 	/* height: 100px; */
 	outline: 0;
     border: 1px solid gray;
@@ -8,14 +34,27 @@
 }
 
 .xsTableGrid {
-	width:100%;
+	width:300px;
+	overflow-x:hidden;
 }
 
+table.xsForm > tbody > tr > td {
+	vertical-align:top
+}
 
 /* Override the jquery-ui fonts */
-.ui-widget, .ui-widget select {
+.ui-widget, .ui-widget select, .ui-dialog-titlebar {
     font-family: inherit;
     font-size: 1em;
+}
+
+.ui-dialog {
+    font-family: inherit;
+	font-size: 80%;
+}
+
+.xsPopupButton {
+	float:right;
 }
 
 .xsTableHolder .sfx-grid { height:auto; }
@@ -25,24 +64,37 @@
 border:0;
 }
 
+.XSDetailsPane a img { /* don't put borders around the images in hyperlinks for IE */
+border:0;
+}
+
 .xsEdit {
 	height : 500px;
 	width : 100%;
 }
 
 .xsEdit > div {
+    height:100%;
+}
+.xsEditTree, .XSDetailsPane {
 	overflow:auto;
 	border:1px solid #999;
     border-radius:0.3em;
-    background : white;
-    height:100%;
 }
 .xsEditTree {
+    background : white;
 	width:30%;
 	float:left;
 	resize:horizontal;
 	min-width:5%;
 	max-width:90%;
+}
+
+.xsEditTreeFullWidth {
+	width:100%;
+	min-height:10em;
+	max-width:100%;
+	resize:none;
 }
 
 .xsEditTree ul {
@@ -86,7 +138,7 @@ img.xsIcon {
 	vertical-align: text-bottom; /* you would think that middle would be better... but it looks ugly to me as it anticipates descenders more than are present in practice. // middle; */
 }
 
-.xsEdit fieldset {
+.XSDetailsPane fieldset {
   border-top: 0;
   border-left:0;
   border-bottom:0.5em;
@@ -96,10 +148,10 @@ img.xsIcon {
   margin-bottom:0.1em;
 }
 
-.xsEdit fieldset:not(:last-child) {
+.XSDetailsPane fieldset:not(:last-child) {
 	border-bottom: 1px solid #bbb;
 }
-.xsEdit fieldset legend {
+.XSDetailsPane fieldset legend {
 	text-align:left;
     color:#008;
     font-size:1.1em;
@@ -107,24 +159,26 @@ img.xsIcon {
     margin-left:0;
 }
 
-.xsEdit .XSDetailsPane {
+.XSDetailsPane {
 	background : #f5f5f5;
 }
 
-.xsEdit .XSDetailsPane p {
+.XSDetailsPane p {
   padding:0px 0px 0px 0px;
   margin:0px 0px 0px 0px;
+}
+.XSDetailsPane > p {
   font-size:0.7em;
 }
 
-.xsEdit .XSDetailsPane h3 {
+.XSDetailsPane h3 {
   padding:0px 0.1em 0px 0.2em;
   margin:0px 0px 0px 0px;
   font-size:1.1em;
 }
 
 
-.xsEdit fieldset table.xsForm {
+.XSDetailsPane fieldset table.xsForm {
 /*	width : 100%; */
   padding:0px 0px 0px 0px;
   margin:0px 0px 0px 0px;
@@ -305,3 +359,32 @@ img.xsImageField {
 	cursor:move;
 	background: #aaa;
 }
+
+/* For progress bars */
+
+.xsStatusWorking {
+	color:blue;
+}
+
+.xsStatusError {
+	color:red;
+	white-space:pre;
+}
+.xsStatusGood {
+	color:green;
+}
+
+/* for disabling things that can't be disabled just by setting css attribute */
+
+a[disabled='disabled'] {
+   text-decoration : none;
+   cursor:default;	
+   opacity:0.5;
+}
+
+a[disabled='disabled']:link, a[disabled='disabled']:visited, a[disabled='disabled']:hover {
+	text-decoration: none; 
+	cursor: default;
+    opacity:0.5;
+}
+
