@@ -103,7 +103,7 @@ object XSController extends Controller {
   );
 
   def demo = Action {
-    val client = new HTML5Client(xsEditor,Some(new XSToolBar),Locale.FRENCH)
+    val client = new HTML5Client(xsEditor,Some(new XSToolBar),Locale.FRENCH,scala.concurrent.ExecutionContext.Implicits.global)
     Ok(views.html.demo(client.baseHTML))
   }
   
