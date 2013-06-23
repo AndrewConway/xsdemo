@@ -31,6 +31,8 @@ function xsProcessClientMessageFromServer(json,session) {
 			$(json.args[0]).after(json.args[1]);
 		} else if (json.cmd=="AddAtStart") {
 			$(json.args[0]).prepend(json.args[1]);
+		} else if (json.cmd=="AddAtEnd") {
+			$(json.args[0]).append(json.args[1]);
 		} else if (json.cmd=="AddClass") {
 			$(json.args[0]).addClass(json.args[1]);
 		} else if (json.cmd=="RemoveClass") {
@@ -59,6 +61,24 @@ function xsProcessClientMessageFromServer(json,session) {
 		} else if (json.cmd=="LostSession") {
 			alert("Lost Session");
 			location.reload(true);
+		} else if (json.cmd=="SetGridTooltip") {
+		    var id = json.args[0];	
+		    var html = json.args[1];
+			var elem = document.getElementById(id+"_tooltip");
+            if (elem) elem.innerHTML=html;
+            var gridelem = document.getElementById(json.args[2]);
+            if (gridelem) {
+				  if (!gridelem.xsTooltips) gridelem.xsTooltips={};
+				  gridelem.xsTooltips[id]=html;
+				  // see if tooltip is currently being displayed.
+				  if (gridelem.childNodes && gridelem.childNodes[1]) {
+					  var tooltip = gridelem.childNodes[1];
+					  var currentID = tooltip.getAttribute("data-tooltipsource");
+					  if (currentID==id) {
+						  tooltip.innerHTML=html;
+					  }
+				  }
+            }
 		} else if (json.cmd=="Errors") {
 			xsPTF.setErrorList(json.id,json.errors);
 			if (json.gridID) {
@@ -66,6 +86,7 @@ function xsProcessClientMessageFromServer(json,session) {
 			  if (elem) {
 				  if (!elem.xsCellErrorLists) elem.xsCellErrorLists={};
 				  elem.xsCellErrorLists[json.id]=json.errors;
+				  // Should really check to see if the error is currently being displayed...
 			  }
 			}
 		} else if (json.cmd=="SetRows") {
@@ -127,9 +148,9 @@ function xsProcessClientMessageFromServer(json,session) {
             	var columnField = slickgrid.getColumns()[args.cell].field;
             	var newValue = args.item[columnField];
             	session.sendToServer({cmd:"ChangeGrid",args:[json.args[0],args.row.toString(),columnField,newValue,session.currentlyEditing]});
-            	console.log(args.row.toString());
-            	console.log(columnField);
-                console.log(args); 
+            	//console.log(args.row.toString());
+            	//console.log(columnField);
+                //console.log(args); 
             });
             slickgrid.xsChangeGrid = function(row,columnField,newValue) { // for booleans.
             	session.sendToServer({cmd:"ChangeGrid",args:[json.args[0],row.toString(),columnField,newValue,session.currentlyEditing]});            	
