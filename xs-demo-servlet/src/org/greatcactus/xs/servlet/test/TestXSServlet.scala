@@ -49,7 +49,7 @@ class TestXSServlet extends XSServlet {
   val xsEditor = new XSEdit(
       try {
         loadFile
-      } catch { case t:Throwable => t.printStackTrace(); loadedProperly=false; new Space(new History(""),Nil) },Some(SpaceExternalDependencyResolver)
+      } catch { case t:Throwable => t.printStackTrace(); loadedProperly=false; new Space(new History(""),Nil) }
   );
   
   def loadFile : Space = XMLDeserialize.deserialize[Space](new FileInputStream(file))

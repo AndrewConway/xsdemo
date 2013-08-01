@@ -99,7 +99,7 @@ object XSController extends Controller {
   val xsEditor = new XSEdit(
       try {
         XMLDeserialize.deserialize[Space](new FileInputStream(file))
-    } catch { case t:Throwable => t.printStackTrace(); loadedProperly=false; new Space(new History(""),Nil) },Some(SpaceExternalDependencyResolver)
+    } catch { case t:Throwable => t.printStackTrace(); loadedProperly=false; new Space(new History(""),Nil) }
   );
 
   def demo = Action {
