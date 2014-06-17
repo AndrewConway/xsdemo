@@ -11,6 +11,9 @@
         <dependent-module archiveName="xs.jar" deploy-path="/WEB-INF/lib" handle="module:/resource/xs/xs">
             <dependency-type>uses</dependency-type>
         </dependent-module>
+        <dependent-module archiveName="scala-xml_2.11-1.0.2.jar" deploy-path="/WEB-INF/lib" handle="module:/classpath/lib/xs/lib/scala-xml_2.11-1.0.2.jar">
+            <dependency-type>uses</dependency-type>
+        </dependent-module>
         <property name="context-root" value="xs-demo-servlet"/>
         <property name="java-output-path" value="/xs-demo-servlet/build/classes"/>
     </wb-module>
