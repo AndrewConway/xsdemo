@@ -1,5 +1,5 @@
 /**
- * Copyright 2012-2013 Andrew Conway. All rights reserved.
+ * Copyright 2012-2014 Andrew Conway. All rights reserved.
  */
 package org.greatcactus.xs.servlet.test
 
@@ -28,16 +28,22 @@ import scala.concurrent.Await
 import org.greatcactus.xs.frontend.XSToolBar
 import org.greatcactus.xs.test.DemoPopup
 import org.greatcactus.xs.frontend.html.servlet.XSServlet
+import javax.websocket.server.ServerEndpoint
+import javax.websocket.OnOpen
+import javax.websocket.Session
+import javax.websocket.OnMessage
+import javax.websocket.OnClose
+import javax.websocket.server.PathParam
+import javax.servlet.annotation.WebServlet
 
 /**
  * @author Andrew
  *
  */
-class TestXSServlet extends XSServlet {  
-  
-    OneTimeSetup.ensureStarted()
 
+@WebServlet(name="mytest",urlPatterns=Array("/test2/"))class TestXSServletWebsockets extends XSServlet {  
   
+  OneTimeSetup.ensureStarted()
   
   override def destroy() {
     if (loadedProperly || !file.exists()) save()
@@ -95,7 +101,13 @@ class TestXSServlet extends XSServlet {
           <title>Test ▶XS◀ in a Servlet</title>
         </head>
         <body spellcheck="false">
-          
+          <script type="text/javascript">
+             xs.wsURL = function(sessionid) {{
+                var wsurl =  'ws://'+location.host+location.pathname.slice(0,-7)+'/TestWS/'+sessionid; // note that the slice is designed to neatly sever the /test2/ this servlet is hosted at.
+                console.log(wsurl);
+                return wsurl; 
+             }};
+          </script>
           <h1>Test XS</h1>
           
           { client.baseHTML }
@@ -105,3 +117,31 @@ class TestXSServlet extends XSServlet {
     out.println(page.toString)
   }
 }  
+
+@ServerEndpoint(value = "/TestWS/{sessionid}")
+class WSEndpoint {
+  println("Creating instance of WSEndpoint")
+  OneTimeSetup.ensureStarted()
+
+  @OnOpen
+  def onOpen(jeesession:Session,@PathParam("sessionid") sessionID:String) {
+    for (session<-SessionManagement.get(sessionID)) session.setDirectSendToClient(message => jeesession.getAsyncRemote().sendText(message.serializeToString))
+    println("Opened "+sessionID+" session "+jeesession.getId())
+  }
+  @OnClose
+  def onClose(jeesession:Session,@PathParam("sessionid") sessionID:String) {
+    for (session<-SessionManagement.get(sessionID)) session.dispose()
+    println("Closed session "+sessionID)
+  }
+  
+  @OnMessage
+  def onMessage(message:String,jeesession:Session,@PathParam("sessionid") sessionID:String) {
+    SessionManagement.get(sessionID) match {
+      case None =>
+      case Some(session) => session.receivedOrderedMessage(ClientMessage.deserialize(message))
+    }
+    println("Got message for session "+sessionID)
+    // message.reverse
+  }
+  
+}
